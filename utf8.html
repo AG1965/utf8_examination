@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UTF-8 Examination</title>
+<style type="text/css">
+html, body, input
+{	font-family:Verdana, Arial, sans-serif;
+}
+h1
+{	font-size:1.2em;
+}
+h2
+{	font-size:1.1em;
+}
+.error	
+{	background-color:yellow;
+	color:red;
+}
+#debug	
+{	font-family: monospace;
+}
+#bit_table td
+{	background-color:white;
+	text-align:center;
+	padding:2px;
+}
+table#bit_table 
+{	background-color:#c0c0c0;
+	border:1px solid black;
+	padding:0px;
+}
+#bit_table td {
+	text-align:center;
+	background-color:white;
+}
+#bit_table th {
+	text-align:left;
+	background-color:lightyellow;
+	padding:2px;
+}
+#bit_table span.x
+{	background-color:#e0e0e0;
+}
+#bit_table span.y
+{	background-color:#e0ffe0;
+}
+.xmp
+{	text-decoration:underline;
+	color:blue;
+}
+.u
+{	font-family:serif;
+	font-size:3em;
+}
+div.skala 
+{	font-size:14px;
+	font-family:monospace;
+	padding-left:3px;
+}
+textarea
+{	font-size:14px;
+	font-family:monospace;
+/*	width:100%; */
+}
+</style>
+<script language="JavaScript">
+// ---------------------------------------------------------------------------------------------------------------------------------
+var h = Array('0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f');
+var nibbles = Array('0000','0001','0010','0011','0100','0101','0110','0111','1000','1001','1010','1011','1100','1101','1110','1111');
+// ---------------------------------------------------------------------------------------------------------------------------------
+function cvtHex2Text() {
+	var input_hex  = document.getElementById('input_hex');
+	var error_hex  = document.getElementById('error_hex');
+	var div_debug = document.getElementById('debug');
+	var debug = '';
+	error_hex.innerHTML = '';
+	var value_hex = input_hex.value.toLowerCase().trim();
+	input_hex.value = value_hex;
+	var length_hex = value_hex.length;
+	if (length_hex % 2 == 1) {
+		error_hex.innerHTML = 'Enter an even number of hex digits!';
+		return;
+	}
+
+	debug   += '<table id="bit_table">';
+	var dx   = '<tr><th>Hex</th>';
+	var db1  = '<tr><th>Bits</th>';
+	var db2  = '<tr><th>Bits used</th>';
+	var dd   = '<tr><th>Decimal</th>';
+	var dlu1 = '<tr><th>HTML</th>';
+	var dlu2 = '<tr><th>Unicode</th>';
+
+// Checking for proper UTF-8 encoding rules and setting up arrays	
+	var i = 0;
+	var b = Array(); // bits per Character
+	var bb = Array(); // Bytes per Character
+	var chars = 0;
+	for (var i = 0; i < length_hex; i+=2) {
+		var x = Array();
+		x1 = value_hex.substr(i, 1);
+		x2 = value_hex.substr(i+1, 1);
+		dx += '<td>&nbsp;&nbsp;' + x1 + '&nbsp;&nbsp;&nbsp;&nbsp;' + x2 + '&nbsp;</td>';
+		var i1 = h.indexOf(x1);
+		if (-1 == i1) {
+			error_hex.innerHTML = '"' + x1 + '" is not a valid hexadecimal character.';
+			return;
+		}
+		var i2 = h.indexOf(x2);
+		if (-1 == i2) {
+			error_hex.innerHTML = '"' + x2 + '" is not a valid hexadecimal character.';
+			return;
+		}
+		var b1 = nibbles[i1];
+		var b2 = nibbles[i2];
+		b[chars] = b1 + b2;
+
+		var addnl_bytes = 0;
+		if 	   ('11110' == b[chars].substr(0, 5)) {
+			addnl_bytes = 3;
+			b[chars] = b2.substr(1, 3);
+			db1 += '<td><span class="x">' + b1 + '</span>&nbsp;<span class="x">' + b2.substr(0,1) + '</span><span class="y">' + b2.substr(1,3) + '</span></td>';
+		}
+		else {	if ('1110'  == b1) {
+			addnl_bytes = 2;
+			b[chars] = b2;
+			db1 += '<td><span class="x">' + b1 + '</span>&nbsp;<span class="y">' + b2 + '</span></td>';
+		}
+		else {	if ('110'   == b1.substr(0, 3)) {
+			addnl_bytes = 1;
+			b[chars] = b1.substr(3, 1) + b2;
+			db1 += '<td><span class="x">' + b1.substr(0,3) + '</span><span class="y">' + b1.substr(3,1) + '</span>&nbsp;<span class="y">' + b2.substr(0,1) + '</span><span class="y">' + b2.substr(1,3) + '</span></td>';
+		}
+		else {	if ('1'     == b1.substr(0, 1)) {
+			error_hex.innerHTML = 'The hex code is no UTF-8 at all or the UTF-8 start sequence is invalid.' + format_error(i,b1,b2);
+			return;
+		} else {
+			db1 += '<td><span class="y">' + b1 + '</span>&nbsp;<span class="y">' + b2 + '</span></td>';
+		}}}}
+		bb[chars] = 1 + addnl_bytes;
+
+		if (i+1 + addnl_bytes*2 > length_hex) {
+			error_hex.innerHTML = 'UTF-8 sequence ended too early.' + format_error(i,b1,b2);
+			return;
+		}	
+
+		
+		for (var a=0; a<addnl_bytes; a++) {
+			i+=2;
+			x1 = value_hex.substr(i, 1);
+			x2 = value_hex.substr(i+1, 1);
+			dx += '<td>&nbsp;&nbsp;' + x1 + '&nbsp;&nbsp;&nbsp;&nbsp;' + x2 + '&nbsp;</td>';
+			var i1 = h.indexOf(x1);
+			if (-1 == i1) {
+				error_hex.innerHTML = '"' + x1 + '" is not a valid hexadecimal character.';
+				return;
+			}
+			var i2 = h.indexOf(x2);
+			if (-1 == i2) {
+				error_hex.innerHTML = '"' + x2 + '" is not a valid hexadecimal character.';
+				return;
+			}
+			var b1 = nibbles[i1];
+			var b2 = nibbles[i2];
+			if ('10' != b1.substr(0, 2)) {
+				error_hex.innerHTML = 'The byte #' + (a+2) + ' of an UTF-8 sequence is invalid because the bit sequence does not start with "10".' + format_error(i,b1,b2);
+				return;
+			}
+
+			db1 += '<td><span class="x">' + b1.substr(0,2) + '</span><span class="y">' + b1.substr(2,2) + '</span>&nbsp;<span class="y">' + b2 + '</span></td>';
+			b[chars] += '|' + b1.substr(2, 2) + b2;
+
+			
+		}
+		
+		chars++;
+	} 
+
+// convert every char to HTML Unicode expression
+	for (var i=0; i<chars; i++) {
+
+		var colspan = 'colspan="' + bb[i] + '"';	
+		db2 += '<td ' + colspan + '>' + b[i] + '</td>';
+		
+		var z = 0;
+		var m = 1;
+		for (var j=b[i].length-1; j>=0; j--) {
+			if ('1' == b[i].substr(j,1)) {
+				z += m;
+			}
+			if ('|' != b[i].substr(j,1)) {
+				m *= 2;
+			}
+		}
+
+		dd   += '<td ' + colspan + '>' + z + '</td>';
+		dlu1 += '<td ' + colspan + '>&amp;#' + z + ';</td>';
+		dlu2 += '<td class="u" ' + colspan + '>&#' + z + ';</td>';
+
+	}	
+
+	dx   += '</tr>';
+	db1  += '</tr>';
+	db2  += '</tr>';
+	dd   += '</tr>';
+	dlu1 += '</tr>';
+	dlu2 += '</tr>';
+	debug += dx + db1 + db2 + dd + dlu1 + dlu2 + '</table>';
+
+	div_debug.innerHTML = debug;
+}
+
+// ----------------------------------------------------
+// ----------------------------------------------------
+function format_error(i,b1,b2) {
+	var html = '';
+	html += '</br><a href="http://en.wikipedia.org/wiki/UTF-8#Description">http://en.wikipedia.org/wiki/UTF-8#Description</a>';
+	html += '</br>Error found at position ' + (i+1) + ' of the input string, bit mask is "' + b1 + '&nbsp;' + b2 + '"';
+	return html; 
+}
+// ----------------------------------------------------
+function example(data) {
+	document.getElementById('input_hex').value = data;
+	cvtHex2Text();
+}
+// ----------------------------------------------------
+</script>
+</head>
+<body>
+<h1>UTF-8 examination</h1>
+<p>Enter a hex representation of a text that you think is UTF-8 encoded and hit the button.<br />
+A JavaScript function will try to convert this to readable form and show the bits used and display useful error information.</p>
+<form action="none" onSubmit="cvtHex2Text();return(false);">
+<table border="1">
+<tr>
+<td><label for="input_hex">Hex</label></td>
+<td><div class="skala">....+....1....+....2....+....3....+....4....+....5....+....6....+....7....+....8<br />12345678901234567890123456789012345678901234567890123456789012345678901234567890</div>
+    <textarea rows="2" cols="80" id="input_hex" name="input_hex"></textarea>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>
+<td><input type="button" value="examine" id="btn_cvtHex2Text" onClick="cvtHex2Text()"></td>
+</tr>
+<tr><td colspan="3"><div class="error" id="error_hex"></div></td></tr>
+</table><br />
+<div id="debug">&nbsp;</div>
+</form>
+<h2>Examples</h2>
+<ul>
+<li>mixed, characters requiring 1 or 2 bytes: <span class="xmp" onClick="example('616263c3a4c3b6c3bcc39fc384c396c39c');">abc&auml;&ouml;&uuml;&szlig;&Auml;&Ouml;&Uuml;</span></li> 
+<li>characters requiring 2 bytes: <span class="xmp" onClick="example('d0a1d0bfd183d182d0bdd0b8d0ba');">&#1057;&#1087;&#1091;&#1090;&#1085;&#1080;&#1082; (Sputnik)</span></li> 
+<li>characters requiring 2 bytes: <span class="xmp" onClick="example('d8b9d984d98a20d8a8d8a7d8a8d8a7');">&#1593;&#1604;&#1610;&#32;&#1576;&#1575;&#1576;&#1575; (Ali Baba)</span></li> 
+<li>characters requiring 3 bytes: <span class="xmp" onClick="example('e5ad94e5a4abe5ad90');">&#23380;&#22827;&#23376; (Confucius)</span></li> 
+<li>characters requiring 4 bytes: <span class="xmp" onClick="example('f0938280f093859ff09382a5f0938394f093859cf093829bf093849a');">&#x13080;&#x1315F;&#x130A5;&#x130D4;&#x1315C;&#x1309B;&#x1311A;&#x130D3; (Egyptian hieroglyphs)</span></li> 
+</ul>
+
+
+<h2>useful links:</h2>
+<ul>
+<li><a href="http://de.wikipedia.org/wiki/Umlaut#UTF-8">http://de.wikipedia.org/wiki/Umlaut#UTF-8</a></li>
+<li><a href="http://www-01.ibm.com/software/globalization/g11n-res.html">http://www-01.ibm.com/software/globalization/g11n-res.html</a></li>
+<li><a href="http://www-01.ibm.com/software/globalization/ccsid/ccsid_registered.html">http://www-01.ibm.com/software/globalization/ccsid/ccsid_registered.html</a></li>
+<li><a href="ftp://ftp.software.ibm.com/software/globalization/gcoc/attachments/CP00273.pdf">CP00273.pdf</a></li>
+<li><a href="ftp://ftp.software.ibm.com/software/globalization/gcoc/attachments/CP00870.pdf">CP00870.pdf</a></li>
+</ul>
+<hr><small>2015 by Anton Gombk&ouml;t&ouml;</small>
+</body>
+</html>
